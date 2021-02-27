@@ -1,4 +1,4 @@
-`include "DEFINE/Ctrl_encoding_def.v"
+`include "Ctrl_encoding_def.v"
 module CTRL (
     input [5:0] OP,
     input [4:0] Bopcode,
@@ -50,17 +50,10 @@ module CTRL (
     // 在 ID 级需要使用的信号
     // ID_BTypeOp  & ID_ExtOp & ID_RfWr & ID_NpcOp
     // ID_BTypeOp_r
-    always @(OP,) begin
+    always @(OP) begin
         case (OP)
-           `OP_BEQ_type  : ID_BTypeOp_r = `B_TYPE_BEQ;
-           `OP_BGTZ_type : ID_BTypeOp_r = `B_TYPE_BGTZ;
-           `OP_BLEZ_type : ID_BTypeOp_r = `B_TYPE_BLEZ;
-           `OP_BNE_type  : ID_BTypeOp_r = `B_TYPE_BNE;
-           `OP_BGEZ_BLTZ :begin
-               if (Bopcode == `ACRON_BGEZ) ID_BTypeOp_r = `B_TYPE_BGEZ;
-               else if (Bopcode == `ACRON_BLTZ) ID_BTypeOp_r = `B_TYPE_BLTZ;
-           end
-            default: ID_BTypeOp_r = 3'bxxx;
+           `OP_BEQ_type : ID_BTypeOp_r=`B_TYPE_BEQ;
+            default: ID_BTypeOp_r=3'bxxx;
         endcase
     end    
 
@@ -72,14 +65,14 @@ module CTRL (
         //    `OP_LBU_type   : ID_ExtOp_r=`EXT_IMME_SIGN; // Lbu   -> Signed16
         //    `OP_LH_type    : ID_ExtOp_r=`EXT_IMME_SIGN; // Lbu   -> Signed16
         //    `OP_LHU_type   : ID_ExtOp_r=`EXT_IMME_SIGN; // Lbu   -> Signed16
-           `OP_SW_type    : ID_ExtOp_r=`EXT_IMME_SIGN;    // Sw    -> Signed16
+           `OP_SW_type    : ID_ExtOp_r=`EXT_IMME_SIGN; // Sw    -> Signed16
         //    `OP_SB_type    : ID_ExtOp_r=`EXT_IMME_SIGN; // Sw    -> Signed16
         //    `OP_SH_type    : ID_ExtOp_r=`EXT_IMME_SIGN; // Sw    -> Signed16
-            `OP_ADDI_type  : ID_ExtOp_r=`EXT_IMME_SIGN;   // ADDI  -> Signed16
-            `OP_ADDIU_type : ID_ExtOp_r=`EXT_IMME_SIGN;   // ADDIU -> Signed16
+        //    `OP_ADDI_type  : ID_ExtOp_r=`EXT_IMME_SIGN; // ADDI  -> Signed16
 
-           `OP_ANDI_type  : ID_ExtOp_r=`EXT_IMME_ZERO; // ANDI  -> Unsigned16
-           `OP_ORI_type    : ID_ExtOp_r=`EXT_IMME_ZERO;   // ORI   -> Unsigned16
+        //    `OP_ADDIU_type : ID_ExtOp_r=`EXT_IMME_ZERO; // ADDIU -> Unsigned16
+        //    `OP_ANDI_type  : ID_ExtOp_r=`EXT_IMME_ZERO; // ANDI  -> Unsigned16
+           `OP_ORI_type   : ID_ExtOp_r=`EXT_IMME_ZERO; // ORI   -> Unsigned16
 
         //    `OP_LUI_type   : ID_ExtOp_r=`EXT_HIGH_SET; //  Lui   -> Set high
             default: ID_ExtOp_r=3'bxx;
@@ -90,13 +83,10 @@ module CTRL (
     // 1 有效 
     always @(OP) begin
         case (OP)
-            `OP_R_type    : ID_RfWr_r = 1'b1;
-            `OP_ORI_type  : ID_RfWr_r = 1'b1;
-            `OP_ANDI_type  : ID_RfWr_r = 1'b1;
-            `OP_ADDI_type : ID_RfWr_r = 1'b1;
-            `OP_ADDIU_type: ID_RfWr_r = 1'b1;
-            `OP_LW_type   : ID_RfWr_r = 1'b1;
-            `OP_JAL_type  : ID_RfWr_r = 1'b1;
+            `OP_R_type   : ID_RfWr_r = 1'b1;
+            `OP_ORI_type : ID_RfWr_r = 1'b1;
+            `OP_LW_type  : ID_RfWr_r = 1'b1;
+            `OP_JAL_type : ID_RfWr_r = 1'b1;
             default : ID_RfWr_r = 1'b0;
         endcase
     end
@@ -124,11 +114,11 @@ module CTRL (
            `OP_R_type : begin
                case (Funct)
                 `FUNCT_ADD  : ID_AluOp_r = `ALUop_ADD;
-                `FUNCT_ADDU : ID_AluOp_r = `ALUop_ADD;
-                `FUNCT_AND  : ID_AluOp_r = `ALUop_AND;
+                // `FUNCT_ADDU : ID_AluOp_r = `ALUop_ADD;
+                // `FUNCT_AND  : ID_AluOp_r = `ALUop_AND;
                 `FUNCT_SUB  : ID_AluOp_r = `ALUop_SUB;
-                `FUNCT_OR   : ID_AluOp_r = `ALUop_ORI;
-                `FUNCT_NOR  : ID_AluOp_r = `ALUop_NOR;
+                // `FUNCT_OR   : ID_AluOp_r = `ALUop_ORI;
+                // `FUNCT_NOR  : ID_AluOp_r = `ALUop_NOR;
                 // `FUNCT_SLL  : ID_AluOp_r = `ALUop_SLL; 
                 default: ;
                 endcase 
@@ -136,7 +126,7 @@ module CTRL (
 
                 /**********  I type **********/
             `OP_ORI_type   : ID_AluOp_r=`ALUop_ORI;
-            `OP_ANDI_type  : ID_AluOp_r=`ALUop_AND;
+            // `OP_ANDI_type  : ID_AluOp_r=`ALUop_AND;
             `OP_LW_type    : ID_AluOp_r=`ALUop_ADD;
             // `OP_LB_type    : ID_AluOp_r=`ALUop_ADD;
             // `OP_LBU_type   : ID_AluOp_r=`ALUop_ADD;
@@ -145,8 +135,8 @@ module CTRL (
             `OP_SW_type    : ID_AluOp_r=`ALUop_ADD;
             // `OP_SB_type    : ID_AluOp_r=`ALUop_ADD;
             // `OP_SH_type    : ID_AluOp_r=`ALUop_ADD;
-            `OP_ADDI_type  : ID_AluOp_r=`ALUop_ADD;
-            `OP_ADDIU_type : ID_AluOp_r=`ALUop_ADD;
+            // `OP_ADDI_type  : ID_AluOp_r=`ALUop_ADD;
+            // `OP_ADDIU_type : ID_AluOp_r=`ALUop_ADD;
 
                 /**********  B type **********/
             `OP_BEQ_type : ID_AluOp_r=`ALUop_SUB;
@@ -168,13 +158,9 @@ module CTRL (
                 if (Funct == `FUNCT_JALR) ID_RwSel_r = 2'b10;
                 else ID_RwSel_r = 2'b01;
             end 
-            `OP_ORI_type  : ID_RwSel_r = 2'b00;
-            `OP_ANDI_type : ID_RwSel_r = 2'b00;
-            `OP_LW_type   : ID_RwSel_r = 2'b00;
-            `OP_ADDI_type : ID_RwSel_r = 2'b00;
-            `OP_ADDIU_type: ID_RwSel_r = 2'b00;
-            
-            `OP_JAL_type  : ID_RwSel_r = 2'b10;
+            `OP_ORI_type : ID_RwSel_r = 2'b00;
+            `OP_LW_type  : ID_RwSel_r = 2'b00;
+            `OP_JAL_type : ID_RwSel_r = 2'b10;
             default: ID_RwSel_r = 2'bxx;
         endcase
     end
@@ -235,9 +221,9 @@ module CTRL (
         else begin
             case (OP)
                 `OP_R_type     : ID_WbSel_r = 2'b01;
-                `OP_ADDI_type  : ID_WbSel_r=2'b01;
-                `OP_ADDIU_type : ID_WbSel_r=2'b01;
-                `OP_ANDI_type  : ID_WbSel_r=2'b01;
+                // `OP_ADDI_type  : ID_WbSel_r=2'b01;
+                // `OP_ADDIU_type : ID_WbSel_r=2'b01;
+                // `OP_ANDI_type  : ID_WbSel_r=2'b01;
                 `OP_ORI_type   : ID_WbSel_r=2'b01;
                 `OP_LW_type    : ID_WbSel_r=2'b00;
                 // `OP_LB_type    : ID_WbSel_r=2'b00;
@@ -268,4 +254,3 @@ assign ID_DmWr = ID_DmWr_r;
 assign ID_ReadMen = (OP == `OP_LW_type)?1:0;
 
 endmodule
-

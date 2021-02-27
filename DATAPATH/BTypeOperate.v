@@ -16,6 +16,27 @@ module BTypeOperate (
                 if (rd1 - rd2 == 0) BResult_r = 1;
                 else BResult_r = 0;
             end
+            `B_TYPE_BGTZ : begin
+                if (rd1[31]==0 && rd1 != 32'b0) BResult_r = 1;
+                else BResult_r = 0;
+            end
+            `B_TYPE_BLEZ : begin
+                if (rd1[31]==1 || rd1 == 32'd0) BResult_r = 1;
+                else BResult_r = 0;
+            end
+            `B_TYPE_BNE  :begin
+                if (rd1 != rd2)  BResult_r = 1;
+                else BResult_r = 0;
+            end
+            end
+            `B_TYPE_BGEZ  :begin
+                if (rd1[31]==0) BResult_r = 1;
+                else BResult_r = 0;
+            end
+            `B_TYPE_BLTZ  :begin
+                if (rd1[31]==1) BResult_r = 1;
+                else BResult_r = 0;
+            end
             default: BResult_r = 1'bx;
 
         endcase

@@ -27,6 +27,11 @@
 
 // BTypeOp_encoding
 `define B_TYPE_BEQ    3'b000
+`define B_TYPE_BGTZ   3'b001
+`define B_TYPE_BLEZ   3'b010
+`define B_TYPE_BNE    3'b011
+`define B_TYPE_BGEZ   3'b100
+`define B_TYPE_BLTZ   3'b101
 
 /***********************************/
 /******* OP ENCODING *******/
@@ -48,7 +53,7 @@
 `define OP_ADDIU_type 6'b001001
 /*******   BRANCH TYPE   *******/
 `define OP_BEQ_type   6'b000100
-`define OP_B_type     6'b000001
+`define OP_BGEZ_BLTZ  6'b000001
 `define OP_BGTZ_type  6'b000111
 `define OP_BLEZ_type  6'b000110
 `define OP_BNE_type   6'b000101

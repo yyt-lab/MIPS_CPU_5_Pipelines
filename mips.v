@@ -149,14 +149,15 @@ PIPE_1_IF_ID_REG U_PIPE_1_IF_ID_REG(
    // 2'b00 -> 选择RF寄存器结果
    // 2'b01 -> 选择alu结果
    // 2'b10 -> 选择dm结果
+   // 2'b11 -> 选择WB结果
    MUX4 #(32) BusA_Sel(
-      .d0(ID_RfOutA),.d1(EXE_AluOut),.d2(MEM_DmOut),
+      .d0(ID_RfOutA),.d1(EXE_AluOut),.d2(MEM_DmOut),.d3(WB_Wd),
       .sel4_to_1(ID_RfForwardA),
       .y(ID_BTypeOpInA)
    );
    // 分支指令单元 旁路操作输入B
    MUX4 #(32) BusB_Sel(
-      .d0(ID_RfOutB),.d1(EXE_AluOut),.d2(MEM_DmOut),
+      .d0(ID_RfOutB),.d1(EXE_AluOut),.d2(MEM_DmOut),.d3(WB_Wd),
       .sel4_to_1(ID_RfForwardB),
       .y(ID_BTypeOpInB)
    );
@@ -164,10 +165,12 @@ PIPE_1_IF_ID_REG U_PIPE_1_IF_ID_REG(
    RFForward U_RFForward(
     .AluWrAddr(EXE_Rw),
     .DmWrAddr(MEM_Rw),
+    .WB_Rw(WB_Rw),
     .rs(ID_rs),
     .rt(ID_rt),
     .AluRfWr(EXE_RfWr),
     .DmRfWr(MEM_RfWr),
+    .WB_RfWr(WB_RfWr),
 
     .RfForwardA(ID_RfForwardA),
     .RfForwardB(ID_RfForwardB)
@@ -229,8 +232,8 @@ PIPE_2_ID_EX_REG U_PIPE_2_ID_EX_REG(
       .ID_RwSel(ID_RwSel),      
       .ID_RfWr(ID_RfWr),
       .ID_DmWr(ID_DmWr),
-      .ID_busA(ID_RfOutA),
-      .ID_busB(ID_RfOutB),
+      .ID_busA(ID_BTypeOpInA),
+      .ID_busB(ID_BTypeOpInB),
       .ID_Imm32(ID_SgnImm16),
       .ID_rs(ID_rs),
       .ID_rt(ID_rt),
