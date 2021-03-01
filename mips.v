@@ -45,8 +45,8 @@ module mips (clk,rst);
    wire ID_BResult; // B型指令结果
    wire ID_IFFlush; // B型指令 清除IF寄存器所有数据
    wire EX_MEM_WB_WriteRegSel; // 关闭dm rf寄存器写信号（发生lw冒险）
-
-
+   wire [2:0] ID_LTypeExtOp;   // WB级LType操作码 
+   wire ID_LTypeSel;
 // 第三级流水线
    wire [2:0] EXE_AluOp;    // ALU操作码选择
    wire [1:0] EXE_WbSel;    // 写回数据选择信号
@@ -65,6 +65,8 @@ module mips (clk,rst);
    wire [31:2] EXE_PcAddOne;
    wire [4:0]  EXE_S;
    wire [1:0]  EXE_SaveType;
+   wire [2:0]  EXE_LTypeExtOp;
+   wire EXE_LTypeSel;
    wire EXE_AluSrcA;
    wire EXE_AluSrcB; 
    wire EXE_ReadMen;          // LW信号
@@ -81,6 +83,8 @@ module mips (clk,rst);
    wire [4:0]  MEM_Rw;
    wire [31:2] MEM_PcAddOne;
    wire [1:0]  MEM_SaveType;
+   wire [2:0]  MEM_LTypeExtOp;
+   wire MEM_LTypeSel;
    wire MEM_RfWr;
 
    wire [31:0] MEM_DmOut;
@@ -91,9 +95,13 @@ module mips (clk,rst);
    wire [31:2] WB_PcAddOne;
    wire [1:0]  WB_WbSel;
    wire [4:0]  WB_Rw;
+   wire WB_LTypeSel;
    wire WB_RfWr;
 
    wire [31:0] WB_Wd;
+   wire [31:0] WB_LTypeDmOut;
+   wire [2:0]  WB_LTypeExtOp;
+   wire [31:0] WB_LTypeResult;
 
    // 指令hex码
    wire [31:0] ID_Instr;
@@ -203,12 +211,14 @@ PIPE_1_IF_ID_REG U_PIPE_1_IF_ID_REG(
       .ID_RwSel(ID_RwSel),  
       .ID_RfWr(ID_RfWr_o),
       .ID_DmWr(ID_DmWr_o),
-      .ID_ReadMen(ID_ReadMen)      
+      .ID_ReadMen(ID_ReadMen),
+      .ID_LTypeExtOp(ID_LTypeExtOp),   
+      .ID_LTypeSel(ID_LTypeSel)
    );
    // B_Hazard
    // ID_IFFlush : 0 -> 清空IF寄存器
    BType_Hazard U_BType_Hazard(
-      .OP(ID_OP),.Funct(ID_Funct),.BResult(ID_BResult),
+      .OP(ID_OP),.Funct(ID_Bopcode),.BResult(ID_BResult),
       .ID_IFFlush(ID_IFFlush)
    );
    // LW_Hazard
@@ -245,6 +255,8 @@ PIPE_2_ID_EX_REG U_PIPE_2_ID_EX_REG(
       .ID_S(ID_S),
       .ID_SaveType(ID_SaveType),
       .ID_Instr(ID_Instr),
+      .ID_LTypeExtOp(ID_LTypeExtOp),
+      .ID_LTypeSel(ID_LTypeSel),
       .ID_AluSrcA(ID_AluSrcA),
       .ID_AluSrcB(ID_AluSrcB),
       .ID_ReadMen(ID_ReadMen),
@@ -269,6 +281,8 @@ PIPE_2_ID_EX_REG U_PIPE_2_ID_EX_REG(
       .EXE_S(EXE_S),
       .EXE_SaveType(EXE_SaveType),
       .EXE_Instr(EXE_Instr),
+      .EXE_LTypeExtOp(EXE_LTypeExtOp),
+      .EXE_LTypeSel(EXE_LTypeSel),
       .EXE_AluSrcA(EXE_AluSrcA),
       .EXE_AluSrcB(EXE_AluSrcB),
       .EXE_ReadMen(EXE_ReadMen)
@@ -330,6 +344,8 @@ PIPE_3_EXE_MEM_REG U_PIPE_3_EXE_MEM_REG(
       .EXE_PcAddOne(EXE_PcAddOne),   
       .EXE_SaveType(EXE_SaveType),
       .EXE_Instr(EXE_Instr),
+      .EXE_LTypeExtOp(EXE_LTypeExtOp),
+      .EXE_LTypeSel(EXE_LTypeSel),
       .EXE_RfWr(EXE_RfWr),
       .clk(clk),
 
@@ -340,7 +356,9 @@ PIPE_3_EXE_MEM_REG U_PIPE_3_EXE_MEM_REG(
       .MEM_Rw(MEM_Rw),
       .MEM_PcAddOne(MEM_PcAddOne),
       .MEM_Instr(MEM_Instr),
+      .MEM_LTypeExtOp(MEM_LTypeExtOp),
       .MEM_SaveType(MEM_SaveType),
+      .MEM_LTypeSel(MEM_LTypeSel),
       .MEM_RfWr(MEM_RfWr)
 );
 
@@ -357,7 +375,9 @@ PIPE_4_MEM_WB_REG U_PIPE_4_MEM_WB_REG(
       .MEM_WbSel(MEM_WbSel),
       .MEM_Rw(MEM_Rw),
       .MEM_Instr(MEM_Instr),
+      .MEM_LTypeExtOp(MEM_LTypeExtOp),
       .MEM_RfWr(MEM_RfWr),
+      .MEM_LTypeSel(MEM_LTypeSel),
       .clk(clk),
 
       .WB_DmResult(WB_DmOut),
@@ -366,13 +386,27 @@ PIPE_4_MEM_WB_REG U_PIPE_4_MEM_WB_REG(
       .WB_WbSel(WB_WbSel),
       .WB_Rw(WB_Rw),
       .WB_Instr(WB_Instr),
+      .WB_LTypeExtOp(WB_LTypeExtOp),
+      .WB_LTypeSel(WB_LTypeSel),
       .WB_RfWr(WB_RfWr)
 );
-
-MUX4 #(32) WdSel(
-   .d0(WB_DmOut),.d1(WB_AluOut),.d2(WB_PcAddOne),.sel4_to_1(WB_WbSel),
-   .y(WB_Wd)
-); 
+   // ID_LTypeSel_r
+   // 0-> Lui type
+   // 1-> Dmresult
+   MUX2 #(32) U_LType_EXT_IN(
+      .d0(WB_AluOut),.d1(WB_DmOut),.sel2_to_1(WB_LTypeSel),
+      .y(WB_LTypeResult)
+   );
+   EXT U_LWEXT(
+      .Imm16(WB_LTypeResult),
+      .EXTop(WB_LTypeExtOp),
+      .LType(WB_AluOut[1:0]),
+      .Imm32(WB_LTypeDmOut)  // 输出
+   );
+   MUX4 #(32) WdSel(
+      .d0(WB_LTypeDmOut),.d1(WB_AluOut),.d2(WB_PcAddOne),.sel4_to_1(WB_WbSel),
+      .y(WB_Wd)
+   ); 
 
 
 endmodule 

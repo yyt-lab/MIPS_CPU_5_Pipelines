@@ -1,4 +1,4 @@
-`include "DEFINE/Ctrl_encoding_def.v"
+`include "Ctrl_encoding_def.v"
 module CTRL (
     input [5:0] OP,
     input [4:0] Bopcode,
@@ -21,7 +21,9 @@ module CTRL (
     output [1:0] ID_RwSel,    // 写回地址选择信号
     output ID_RfWr,           // 寄存器堆写信号
     output ID_DmWr,           // 数据存储器写信号
-    output ID_ReadMen         // LW信号
+    output ID_ReadMen,        // LW信号
+    output [2:0] ID_LTypeExtOp,  // WB级LType操作码
+    output ID_LTypeSel        //  WB级LType选择信号
 ); 
     reg  ID_PcSel_r;     // PC寄存器输入选择信号
     reg [2:0] ID_BTypeOp_r;   // B型指令 比较信号选择
@@ -35,12 +37,18 @@ module CTRL (
     reg [1:0] ID_RwSel_r;     // 写回地址选择信号
     reg ID_RfWr_r;            // 寄存器堆写信号
     reg ID_DmWr_r;            // 数据存储器写信号
-
+    reg [2:0] ID_LTypeExtOp_r;
+    reg ID_LTypeSel_r;
     // 在 IF 级需要使用的信号
     // ID_PcSel_r
     // 默认选择1(PC+4)
     always @(PC,BResult,OP) begin
         if (OP == `OP_BEQ_type && BResult == 1'b1) ID_PcSel_r=1'b0;
+        else if (OP == `OP_BGTZ_type && BResult == 1'b1) ID_PcSel_r=1'b0;
+        else if (OP == `OP_BLEZ_type && BResult == 1'b1) ID_PcSel_r=1'b0;
+        else if (OP == `OP_BNE_type && BResult == 1'b1) ID_PcSel_r=1'b0;
+        else if ((OP== `OP_BGEZ_BLTZ && Bopcode == `ACRON_BGEZ) &&( BResult == 1'b1 )) ID_PcSel_r=1'b0;
+        else if ((OP== `OP_BGEZ_BLTZ && Bopcode == `ACRON_BLTZ) &&( BResult == 1'b1 )) ID_PcSel_r=1'b0;
         else if (OP == `OP_JAL_type) ID_PcSel_r=1'b0;
         else ID_PcSel_r = 1'b1;
     end
@@ -50,7 +58,7 @@ module CTRL (
     // 在 ID 级需要使用的信号
     // ID_BTypeOp  & ID_ExtOp & ID_RfWr & ID_NpcOp
     // ID_BTypeOp_r
-    always @(OP,) begin
+    always @(OP,Bopcode) begin
         case (OP)
            `OP_BEQ_type  : ID_BTypeOp_r = `B_TYPE_BEQ;
            `OP_BGTZ_type : ID_BTypeOp_r = `B_TYPE_BGTZ;
@@ -67,21 +75,21 @@ module CTRL (
     // ID_ExtOp_r
     always @(OP) begin
         case (OP)           
-           `OP_LW_type    : ID_ExtOp_r=`EXT_IMME_SIGN; // Lw    -> Signed16
-        //    `OP_LB_type    : ID_ExtOp_r=`EXT_IMME_SIGN; // Lb    -> Signed16
-        //    `OP_LBU_type   : ID_ExtOp_r=`EXT_IMME_SIGN; // Lbu   -> Signed16
-        //    `OP_LH_type    : ID_ExtOp_r=`EXT_IMME_SIGN; // Lbu   -> Signed16
-        //    `OP_LHU_type   : ID_ExtOp_r=`EXT_IMME_SIGN; // Lbu   -> Signed16
-           `OP_SW_type    : ID_ExtOp_r=`EXT_IMME_SIGN;    // Sw    -> Signed16
-        //    `OP_SB_type    : ID_ExtOp_r=`EXT_IMME_SIGN; // Sw    -> Signed16
-        //    `OP_SH_type    : ID_ExtOp_r=`EXT_IMME_SIGN; // Sw    -> Signed16
-            `OP_ADDI_type  : ID_ExtOp_r=`EXT_IMME_SIGN;   // ADDI  -> Signed16
-            `OP_ADDIU_type : ID_ExtOp_r=`EXT_IMME_SIGN;   // ADDIU -> Signed16
-
-           `OP_ANDI_type  : ID_ExtOp_r=`EXT_IMME_ZERO; // ANDI  -> Unsigned16
-           `OP_ORI_type    : ID_ExtOp_r=`EXT_IMME_ZERO;   // ORI   -> Unsigned16
-
-        //    `OP_LUI_type   : ID_ExtOp_r=`EXT_HIGH_SET; //  Lui   -> Set high
+           `OP_LW_type    : ID_ExtOp_r = `EXT_IMME_SIGN;   // Lw    -> Signed16
+           `OP_LB_type    : ID_ExtOp_r = `EXT_IMME_SIGN;     // Lb    -> Signed16
+           `OP_LBU_type   : ID_ExtOp_r = `EXT_IMME_SIGN;     // Lbu   -> Signed16
+           `OP_LH_type    : ID_ExtOp_r = `EXT_IMME_SIGN;     // Lbu   -> Signed16
+           `OP_LHU_type   : ID_ExtOp_r = `EXT_IMME_SIGN;     // Lbu   -> Signed16
+           `OP_SW_type    : ID_ExtOp_r = `EXT_IMME_SIGN;   // Sw    -> Signed16
+           `OP_SB_type    : ID_ExtOp_r = `EXT_IMME_SIGN;   // Sw    -> Signed16
+           `OP_SH_type    : ID_ExtOp_r = `EXT_IMME_SIGN;   // Sw    -> Signed16
+           `OP_ADDI_type  : ID_ExtOp_r = `EXT_IMME_SIGN;   // ADDI  -> Signed16
+           `OP_ADDIU_type : ID_ExtOp_r = `EXT_IMME_SIGN;   // ADDIU -> Signed16
+  
+           `OP_ANDI_type  : ID_ExtOp_r = `EXT_IMME_ZERO;   // ANDI  -> Unsigned16
+           `OP_ORI_type   : ID_ExtOp_r = `EXT_IMME_ZERO;   // ORI   -> Unsigned16
+  
+           `OP_LUI_type   : ID_ExtOp_r = `EXT_IMME_ZERO;      //  Lui   -> Set high
             default: ID_ExtOp_r=3'bxx;
         endcase 
     end
@@ -92,23 +100,29 @@ module CTRL (
         case (OP)
             `OP_R_type    : ID_RfWr_r = 1'b1;
             `OP_ORI_type  : ID_RfWr_r = 1'b1;
-            `OP_ANDI_type  : ID_RfWr_r = 1'b1;
+            `OP_ANDI_type : ID_RfWr_r = 1'b1;
             `OP_ADDI_type : ID_RfWr_r = 1'b1;
             `OP_ADDIU_type: ID_RfWr_r = 1'b1;
+            /*********   IType  **********/
             `OP_LW_type   : ID_RfWr_r = 1'b1;
+            `OP_LB_type   : ID_RfWr_r = 1'b1;
+            `OP_LBU_type  : ID_RfWr_r = 1'b1;
+            `OP_LH_type   : ID_RfWr_r = 1'b1;
+            `OP_LHU_type  : ID_RfWr_r = 1'b1;
+            `OP_LUI_type  : ID_RfWr_r = 1'b1;
+
             `OP_JAL_type  : ID_RfWr_r = 1'b1;
             default : ID_RfWr_r = 1'b0;
         endcase
     end
     // ID_NpcOp_r
-    always @(OP,Funct,BResult) begin
-        // if ((Bopcode == `ACRON_BGEZ) &&( GeZero == 1'B1 )) ID_NpcOp_r=`NPC_BRANCH;  // BGEZ 
-        // else if ((Bopcode == `ACRON_BLTZ) &&( LsZero == 1'B1 )) ID_NpcOp_r=`NPC_BRANCH;  // BLTZ
-        if ((OP == `OP_BEQ_type) && BResult == 1'b1)  ID_NpcOp_r=`NPC_BRANCH;   // BEQ
-        // else if ((OP == `OP_BGTZ_type) && (Zero == 1'b0 && GeZero == 1'B1)) ID_NpcOp_r=`NPC_BRANCH;   // BGTZ
-        // else if ((OP == `OP_BLEZ_type) && (Zero == 1'b1 || LsZero == 1'B1)) ID_NpcOp_r=`NPC_BRANCH;   // BLEZ
-        // else if ((OP  ==`OP_BNE_type) && (Zero == 1'B0)) ID_NpcOp_r=`NPC_BRANCH;   // BNE
-
+    always @(OP,Funct,BResult,Bopcode) begin
+        if ((OP== `OP_BGEZ_BLTZ && Bopcode == `ACRON_BGEZ) &&( BResult == 1'b1 )) ID_NpcOp_r=`NPC_BRANCH;  // BGEZ 
+        else if ((OP== `OP_BGEZ_BLTZ && Bopcode == `ACRON_BLTZ) &&( BResult == 1'b1 )) ID_NpcOp_r=`NPC_BRANCH;  // BLTZ
+        else if ((OP == `OP_BEQ_type) && BResult == 1'b1)  ID_NpcOp_r=`NPC_BRANCH;   // BEQ
+        else if ((OP == `OP_BGTZ_type) && (BResult == 1'b1)) ID_NpcOp_r=`NPC_BRANCH;   // BGTZ
+        else if ((OP == `OP_BLEZ_type) && (BResult == 1'b1 )) ID_NpcOp_r=`NPC_BRANCH;   // BLEZ
+        else if ((OP  ==`OP_BNE_type) && (BResult == 1'b1)) ID_NpcOp_r=`NPC_BRANCH;   // BNE
         else if (OP == `OP_J_type ) ID_NpcOp_r =`NPC_JUMP;
         else if (OP == `OP_JAL_type ) ID_NpcOp_r =`NPC_JUMP;
         else if (OP == `OP_R_type && (Funct == `FUNCT_JALR || Funct == `FUNCT_JR) ) ID_NpcOp_r =`NPC_RF;
@@ -137,23 +151,27 @@ module CTRL (
                 /**********  I type **********/
             `OP_ORI_type   : ID_AluOp_r=`ALUop_ORI;
             `OP_ANDI_type  : ID_AluOp_r=`ALUop_AND;
+
             `OP_LW_type    : ID_AluOp_r=`ALUop_ADD;
-            // `OP_LB_type    : ID_AluOp_r=`ALUop_ADD;
-            // `OP_LBU_type   : ID_AluOp_r=`ALUop_ADD;
-            // `OP_LH_type    : ID_AluOp_r=`ALUop_ADD;
-            // `OP_LHU_type   : ID_AluOp_r=`ALUop_ADD;
+            `OP_LB_type    : ID_AluOp_r=`ALUop_ADD;
+            `OP_LBU_type   : ID_AluOp_r=`ALUop_ADD;
+            `OP_LH_type    : ID_AluOp_r=`ALUop_ADD;
+            `OP_LHU_type   : ID_AluOp_r=`ALUop_ADD;
+            `OP_LUI_type   : ID_AluOp_r=`ALUop_ADD;
+
             `OP_SW_type    : ID_AluOp_r=`ALUop_ADD;
-            // `OP_SB_type    : ID_AluOp_r=`ALUop_ADD;
-            // `OP_SH_type    : ID_AluOp_r=`ALUop_ADD;
+            `OP_SB_type    : ID_AluOp_r=`ALUop_ADD;
+            `OP_SH_type    : ID_AluOp_r=`ALUop_ADD;
+
             `OP_ADDI_type  : ID_AluOp_r=`ALUop_ADD;
             `OP_ADDIU_type : ID_AluOp_r=`ALUop_ADD;
 
-                /**********  B type **********/
-            `OP_BEQ_type : ID_AluOp_r=`ALUop_SUB;
-            // `OP_B_type   : ID_AluOp_r=`ALUop_SUB;
-            // `OP_BGTZ_type: ID_AluOp_r=`ALUop_SUB;
-            // `OP_BLEZ_type: ID_AluOp_r=`ALUop_SUB;
-            // `OP_BNE_type : ID_AluOp_r=`ALUop_SUB;
+            //     /**********  B type **********/
+            // `OP_BEQ_type : ID_AluOp_r=`ALUop_SUB;
+            // // `OP_B_type   : ID_AluOp_r=`ALUop_SUB;
+            // // `OP_BGTZ_type: ID_AluOp_r=`ALUop_SUB;
+            // // `OP_BLEZ_type: ID_AluOp_r=`ALUop_SUB;
+            // // `OP_BNE_type : ID_AluOp_r=`ALUop_SUB;
             default: ID_AluOp_r=3'bxxx;
         endcase
     end
@@ -170,7 +188,14 @@ module CTRL (
             end 
             `OP_ORI_type  : ID_RwSel_r = 2'b00;
             `OP_ANDI_type : ID_RwSel_r = 2'b00;
+            
             `OP_LW_type   : ID_RwSel_r = 2'b00;
+            `OP_LB_type   : ID_RwSel_r = 2'b00;
+            `OP_LBU_type  : ID_RwSel_r = 2'b00;
+            `OP_LH_type   : ID_RwSel_r = 2'b00;
+            `OP_LHU_type  : ID_RwSel_r = 2'b00;
+            `OP_LUI_type  : ID_RwSel_r = 2'b00;
+
             `OP_ADDI_type : ID_RwSel_r = 2'b00;
             `OP_ADDIU_type: ID_RwSel_r = 2'b00;
             
@@ -203,6 +228,7 @@ module CTRL (
                    default: ID_AluSrcB_r = 0;
                endcase
            end 
+           `OP_LUI_type : ID_AluSrcB_r = 1'b1;
             default: ID_AluSrcB_r = 1;
         endcase
     end
@@ -212,6 +238,8 @@ module CTRL (
     always @(OP) begin
         case (OP)
             `OP_SW_type :  ID_DmWr_r=1;
+            `OP_SH_type :  ID_DmWr_r=1;
+            `OP_SB_type :  ID_DmWr_r=1;
             default: ID_DmWr_r=0;
         endcase
     end
@@ -226,7 +254,7 @@ module CTRL (
     end
 
     // WB级会用到的信号
-    // ID_WbSel_r
+    // ID_WbSel_r & ID_LTypeExtOp_r
     // 01: sel ALU result
     // 00: sel DM result 
     // 10: sel PC result
@@ -239,17 +267,41 @@ module CTRL (
                 `OP_ADDIU_type : ID_WbSel_r=2'b01;
                 `OP_ANDI_type  : ID_WbSel_r=2'b01;
                 `OP_ORI_type   : ID_WbSel_r=2'b01;
+
                 `OP_LW_type    : ID_WbSel_r=2'b00;
-                // `OP_LB_type    : ID_WbSel_r=2'b00;
-                // `OP_LBU_type   : ID_WbSel_r=2'b00;
-                // `OP_LHU_type   : ID_WbSel_r=2'b00;
-                // `OP_LUI_type   : ID_WbSel_r=2'b00;
-                // `OP_LH_type    : ID_WbSel_r=2'b00;
+                `OP_LB_type    : ID_WbSel_r=2'b00;
+                `OP_LBU_type   : ID_WbSel_r=2'b00;
+                `OP_LHU_type   : ID_WbSel_r=2'b00;
+                `OP_LUI_type   : ID_WbSel_r=2'b00;
+
+                `OP_LH_type    : ID_WbSel_r=2'b00;
                 `OP_JAL_type   : ID_WbSel_r = 2'b10;
                 default: ID_WbSel_r=2'bxx;
             endcase
         end 
     end
+
+    // ID_LTypeExtOp_r
+    always @( OP) begin
+        case (OP)
+           `OP_LW_type  : ID_LTypeExtOp_r = `EXT_32;
+           `OP_LB_type  : ID_LTypeExtOp_r = `EXT_8_SIGNED;
+           `OP_LBU_type : ID_LTypeExtOp_r = `EXT_8_ZERO;
+           `OP_LH_type  : ID_LTypeExtOp_r = `EXT_16_SIGNED;
+           `OP_LHU_type : ID_LTypeExtOp_r = `EXT_16_ZERO;
+           `OP_LUI_type : ID_LTypeExtOp_r = `EXT_HIGH_SET;
+            default: ID_LTypeExtOp_r = `EXT_32;
+        endcase
+    end
+    // ID_LTypeSel_r
+    // 0-> Lui type
+    // 1-> Dmresult
+    always @(OP) begin
+        if (OP == `OP_LUI_type)  ID_LTypeSel_r=0;
+        else ID_LTypeSel_r=1;
+        
+    end
+
 
 assign ID_PcSel   = ID_PcSel_r;
 assign ID_BTypeOp = ID_BTypeOp_r;
@@ -263,7 +315,8 @@ assign ID_AluSrcB = ID_AluSrcB_r;
 assign ID_SaveType = ID_SaveType_r;
 assign ID_RfWr = ID_RfWr_r;
 assign ID_DmWr = ID_DmWr_r;
-
+assign ID_LTypeExtOp = ID_LTypeExtOp_r;
+assign ID_LTypeSel = ID_LTypeSel_r;
 
 assign ID_ReadMen = (OP == `OP_LW_type)?1:0;
 

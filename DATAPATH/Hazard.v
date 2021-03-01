@@ -27,7 +27,7 @@ endmodule
 
 module BType_Hazard (
     input [5:0] OP,
-    input [5:0] Funct,
+    input [4:0] Funct,
     input BResult,
 
     output ID_IFFlush //
@@ -37,6 +37,12 @@ module BType_Hazard (
     // ID_IFFlush_r
     always @(OP,BResult,Funct) begin
         if (OP == `OP_BEQ_type && BResult == 1)  ID_IFFlush_r = 1'b0;
+        else if (OP == `OP_BGTZ_type && BResult == 1)  ID_IFFlush_r = 1'b0;
+        else if (OP == `OP_BLEZ_type && BResult == 1)  ID_IFFlush_r = 1'b0;
+        else if (OP == `OP_BEQ_type && BResult == 1)  ID_IFFlush_r = 1'b0;
+        else if (OP == `OP_BNE_type && BResult == 1)  ID_IFFlush_r = 1'b0;
+        else if ((OP== `OP_BGEZ_BLTZ && Funct == `ACRON_BGEZ) &&( BResult == 1'b1 )) ID_IFFlush_r = 1'b0;
+        else if ((OP== `OP_BGEZ_BLTZ && Funct == `ACRON_BLTZ) &&( BResult == 1'b1 )) ID_IFFlush_r = 1'b0;
         else if (OP == `OP_R_type && Funct == `FUNCT_JR ) ID_IFFlush_r = 1'b0;
         else if (OP == `OP_J_type) ID_IFFlush_r = 1'b0;
         else if (OP == `OP_JAL_type) ID_IFFlush_r = 1'b0;

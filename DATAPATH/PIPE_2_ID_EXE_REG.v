@@ -17,6 +17,8 @@ module PIPE_2_ID_EX_REG (
     input [4:0]  ID_S,
     input [1:0]  ID_SaveType,
     input [31:0] ID_Instr,
+    input [2:0]  ID_LTypeExtOp,
+    input ID_LTypeSel,
     input ID_AluSrcA,
     input ID_AluSrcB,
     input ID_ReadMen,         // LW信号
@@ -41,10 +43,13 @@ module PIPE_2_ID_EX_REG (
     output [4:0]  EXE_S,
     output [1:0]  EXE_SaveType,
     output [31:0] EXE_Instr,
+    output [2:0] EXE_LTypeExtOp,
+    output EXE_LTypeSel,
     output EXE_AluSrcA,
     output EXE_AluSrcB, 
-    output EXE_ReadMen           // LW信号
+    output EXE_ReadMen            // LW信号
 );
+
     reg [2:0] EXE_AluOp_r;    // ALU操作码选择
     reg [1:0] EXE_WbSel_r;    // 写回数据选择信号
     reg [1:0] EXE_RwSel_r;    // 写回地址选择信号
@@ -63,9 +68,12 @@ module PIPE_2_ID_EX_REG (
     reg [4:0]  EXE_S_r;
     reg [1:0]  EXE_SaveType_r;
     reg [31:0] EXE_Instr_r;
+    reg [2:0] EXE_LTypeExtOp_r;
+    reg EXE_LTypeSel_r;
     reg EXE_AluSrcA_r;
     reg EXE_AluSrcB_r; 
-    reg EXE_ReadMen_r;          // LW信号    
+    reg EXE_ReadMen_r;          // LW信号  
+
     always @(posedge clk) begin
         //if (ID_EX_REG_WR)begin
             EXE_AluOp_r   <= ID_AluOp;
@@ -86,11 +94,11 @@ module PIPE_2_ID_EX_REG (
             EXE_S_r       <=  ID_S;
             EXE_SaveType_r <=  ID_SaveType;
             EXE_Instr_r   <= ID_Instr;
+            EXE_LTypeExtOp_r <= ID_LTypeExtOp;
             EXE_AluSrcA_r <= ID_AluSrcA;
             EXE_AluSrcB_r <= ID_AluSrcB;
             EXE_ReadMen_r <= ID_ReadMen;
-
-
+            EXE_LTypeSel_r<= ID_LTypeSel;
         //end
            
     end
@@ -113,7 +121,9 @@ module PIPE_2_ID_EX_REG (
     assign EXE_S  = EXE_S_r;
     assign EXE_SaveType = EXE_SaveType_r;
     assign EXE_Instr = EXE_Instr_r;
+    assign EXE_LTypeExtOp = EXE_LTypeExtOp_r;
     assign EXE_AluSrcA= EXE_AluSrcA_r;
     assign EXE_AluSrcB= EXE_AluSrcB_r;
     assign EXE_ReadMen= EXE_ReadMen_r;
+    assign EXE_LTypeSel = EXE_LTypeSel_r;
 endmodule
