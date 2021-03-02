@@ -22,6 +22,9 @@ always @(busA,busB,ALUop) begin
         `ALUop_AND :  ALUout_r = busA & busB;
         `ALUop_NOR :  ALUout_r = ~(busA | busB);
         `ALUop_SLL :  ALUout_r = busB << s;
+        `ALUop_SRL :  ALUout_r = busB >> s;
+        `ALUop_SRA :  ALUout_r = busB >>> s;
+
         default: ;
     endcase
     

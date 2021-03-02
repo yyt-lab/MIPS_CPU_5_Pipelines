@@ -47,6 +47,8 @@ module mips (clk,rst);
    wire EX_MEM_WB_WriteRegSel; // 关闭dm rf寄存器写信号（发生lw冒险）
    wire [2:0] ID_LTypeExtOp;   // WB级LType操作码 
    wire ID_LTypeSel;
+   wire [1:0] ID_VariShiftSel;
+
 // 第三级流水线
    wire [2:0] EXE_AluOp;    // ALU操作码选择
    wire [1:0] EXE_WbSel;    // 写回数据选择信号
@@ -67,14 +69,15 @@ module mips (clk,rst);
    wire [1:0]  EXE_SaveType;
    wire [2:0]  EXE_LTypeExtOp;
    wire EXE_LTypeSel;
+   wire [1:0] EXE_VariShiftSel;
    wire EXE_AluSrcA;
    wire EXE_AluSrcB; 
    wire EXE_ReadMen;          // LW信号
 
-   wire [31:0] EXE_AluOut,EXE_S_o;
+   wire [31:0] EXE_AluOut,EXE_S_Out;
    wire [31:0] EXE_AluInA,EXE_AluInA_o,EXE_AluInB,EXE_AluInB_o;
    wire [1:0] EXE_ForwardA,EXE_ForwardB;
-   wire [4:0] EXE_Rw;
+   wire [4:0] EXE_Rw,EXE_S_o;
 // 第四级流水线
    wire MEM_DmWr;
    wire [1:0]  MEM_WbSel;
@@ -193,7 +196,7 @@ PIPE_1_IF_ID_REG U_PIPE_1_IF_ID_REG(
       .PC(ID_PcAddOne),
       .NPC(ID_NpcOut),
       .Imm(ID_Imm26),
-      .RFIn(ID_RfOutA),
+      .RFIn(ID_BTypeOpInA),
       .NPCop(ID_NpcOp)  // 下一地址选择操作码
    );
    // CTRL 
@@ -213,7 +216,8 @@ PIPE_1_IF_ID_REG U_PIPE_1_IF_ID_REG(
       .ID_DmWr(ID_DmWr_o),
       .ID_ReadMen(ID_ReadMen),
       .ID_LTypeExtOp(ID_LTypeExtOp),   
-      .ID_LTypeSel(ID_LTypeSel)
+      .ID_LTypeSel(ID_LTypeSel),
+      .ID_VariShiftSel(ID_VariShiftSel)
    );
    // B_Hazard
    // ID_IFFlush : 0 -> 清空IF寄存器
@@ -257,6 +261,7 @@ PIPE_2_ID_EX_REG U_PIPE_2_ID_EX_REG(
       .ID_Instr(ID_Instr),
       .ID_LTypeExtOp(ID_LTypeExtOp),
       .ID_LTypeSel(ID_LTypeSel),
+      .ID_VariShiftSel(ID_VariShiftSel),
       .ID_AluSrcA(ID_AluSrcA),
       .ID_AluSrcB(ID_AluSrcB),
       .ID_ReadMen(ID_ReadMen),
@@ -283,11 +288,12 @@ PIPE_2_ID_EX_REG U_PIPE_2_ID_EX_REG(
       .EXE_Instr(EXE_Instr),
       .EXE_LTypeExtOp(EXE_LTypeExtOp),
       .EXE_LTypeSel(EXE_LTypeSel),
+      .EXE_VariShiftSel(EXE_VariShiftSel),
       .EXE_AluSrcA(EXE_AluSrcA),
       .EXE_AluSrcB(EXE_AluSrcB),
       .EXE_ReadMen(EXE_ReadMen)
    );
-   assign EXE_S_o = {27'b0,EXE_S};
+
 
    // 旁路单元 ALU_A  输入信号A选择
    // 1 -> WB
@@ -310,11 +316,20 @@ PIPE_2_ID_EX_REG U_PIPE_2_ID_EX_REG(
       .rs(EXE_rs),.rt(EXE_rt),.EX_MEM_Rf_RfWr(MEM_RfWr),.MEM_WB_RfWr(WB_RfWr),.EX_MEM_rw(MEM_Rw),.MEM_WB_rw(WB_Rw),
       .ForwardA(EXE_ForwardA),.ForwardB(EXE_ForwardB)
    );
+   // 移位量选择（variable or fixed）
+   // ID_VariShiftSel
+   // 0 -> s (fixed shift)
+   // 1 -> variable shift 
+   MUX4 #(5) U_SHIFT_AMOUT(
+      .d0(EXE_S),.d1(EXE_AluInA_o[4:0]),.d3(5'd16),.sel4_to_1(EXE_VariShiftSel),
+      .y(EXE_S_o)
+   );
+   assign EXE_S_Out = {27'b0,EXE_S_o};
    //选择寄存器结果，或位移数量
    // 0-> rs（已经旁路）
    // 1-> S 位移长度 （已经扩展）
    MUX2 #(32) U_ALU_SWTICH_A(
-      .d0(EXE_AluInA_o),.d1(EXE_S_o),.sel2_to_1(EXE_AluSrcA),
+      .d0(EXE_AluInA_o),.d1(EXE_S_Out),.sel2_to_1(EXE_AluSrcA),
       .y(EXE_AluInA)
    );
    // 选择立即数/rt
@@ -326,7 +341,7 @@ PIPE_2_ID_EX_REG U_PIPE_2_ID_EX_REG(
    );
    // ALU模块
    ALU U_ALU(
-      .busA(EXE_AluInA),.busB(EXE_AluInB),.ALUop(EXE_AluOp),.s(EXE_S),
+      .busA(EXE_AluInA),.busB(EXE_AluInB),.ALUop(EXE_AluOp),.s(EXE_S_o),
       .ALUout(EXE_AluOut)
    );
    // Rw模块选择

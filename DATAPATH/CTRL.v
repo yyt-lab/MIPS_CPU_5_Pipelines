@@ -23,7 +23,8 @@ module CTRL (
     output ID_DmWr,           // 数据存储器写信号
     output ID_ReadMen,        // LW信号
     output [2:0] ID_LTypeExtOp,  // WB级LType操作码
-    output ID_LTypeSel        //  WB级LType选择信号
+    output ID_LTypeSel,       //  WB级LType选择信号
+    output [1:0] ID_VariShiftSel    //  移位量选择
 ); 
     reg  ID_PcSel_r;     // PC寄存器输入选择信号
     reg [2:0] ID_BTypeOp_r;   // B型指令 比较信号选择
@@ -39,10 +40,11 @@ module CTRL (
     reg ID_DmWr_r;            // 数据存储器写信号
     reg [2:0] ID_LTypeExtOp_r;
     reg ID_LTypeSel_r;
+    reg [1:0] ID_VariShiftSel_r;
     // 在 IF 级需要使用的信号
     // ID_PcSel_r
     // 默认选择1(PC+4)
-    always @(PC,BResult,OP) begin
+    always @(PC,BResult,Funct,OP) begin
         if (OP == `OP_BEQ_type && BResult == 1'b1) ID_PcSel_r=1'b0;
         else if (OP == `OP_BGTZ_type && BResult == 1'b1) ID_PcSel_r=1'b0;
         else if (OP == `OP_BLEZ_type && BResult == 1'b1) ID_PcSel_r=1'b0;
@@ -50,6 +52,8 @@ module CTRL (
         else if ((OP== `OP_BGEZ_BLTZ && Bopcode == `ACRON_BGEZ) &&( BResult == 1'b1 )) ID_PcSel_r=1'b0;
         else if ((OP== `OP_BGEZ_BLTZ && Bopcode == `ACRON_BLTZ) &&( BResult == 1'b1 )) ID_PcSel_r=1'b0;
         else if (OP == `OP_JAL_type) ID_PcSel_r=1'b0;
+        else if (OP == `OP_R_type && (Funct == `FUNCT_JALR || Funct ==`FUNCT_JR )) ID_PcSel_r=1'b0;
+        else if (OP == `OP_J_type) ID_PcSel_r=1'b0;
         else ID_PcSel_r = 1'b1;
     end
 
@@ -129,8 +133,8 @@ module CTRL (
         else ID_NpcOp_r =`NPC_NORMAL;
     end
 
-    // 在EXE级会用到的信号
-    // ID_AluOp & ID_RwSel & ID_AluSrcA  & ID_AluSrcB
+// 在EXE级会用到的信号
+    // ID_AluOp & ID_RwSel & ID_AluSrcA  & ID_AluSrcB & ID_VariShiftSel
     // ID_AluOp_r
     always @(OP,Funct) begin
         case (OP)
@@ -139,11 +143,18 @@ module CTRL (
                case (Funct)
                 `FUNCT_ADD  : ID_AluOp_r = `ALUop_ADD;
                 `FUNCT_ADDU : ID_AluOp_r = `ALUop_ADD;
+                `FUNCT_SUBU : ID_AluOp_r = `ALUop_ADD;
                 `FUNCT_AND  : ID_AluOp_r = `ALUop_AND;
                 `FUNCT_SUB  : ID_AluOp_r = `ALUop_SUB;
                 `FUNCT_OR   : ID_AluOp_r = `ALUop_ORI;
                 `FUNCT_NOR  : ID_AluOp_r = `ALUop_NOR;
-                // `FUNCT_SLL  : ID_AluOp_r = `ALUop_SLL; 
+                `FUNCT_SLL  : ID_AluOp_r = `ALUop_SLL; 
+                `FUNCT_SLLV : ID_AluOp_r = `ALUop_SLL; 
+                `FUNCT_SRL  : ID_AluOp_r = `ALUop_SRL; 
+                `FUNCT_SRLV : ID_AluOp_r = `ALUop_SRL; 
+                `FUNCT_SRA  : ID_AluOp_r = `ALUop_SRA; 
+                `FUNCT_SRAV : ID_AluOp_r = `ALUop_SRA; 
+
                 default: ;
                 endcase 
            end
@@ -157,7 +168,8 @@ module CTRL (
             `OP_LBU_type   : ID_AluOp_r=`ALUop_ADD;
             `OP_LH_type    : ID_AluOp_r=`ALUop_ADD;
             `OP_LHU_type   : ID_AluOp_r=`ALUop_ADD;
-            `OP_LUI_type   : ID_AluOp_r=`ALUop_ADD;
+
+            `OP_LUI_type   : ID_AluOp_r=`ALUop_SLL;
 
             `OP_SW_type    : ID_AluOp_r=`ALUop_ADD;
             `OP_SB_type    : ID_AluOp_r=`ALUop_ADD;
@@ -180,10 +192,10 @@ module CTRL (
     // R_Type   -> 01 : select rd
     // I_Type   -> 00 : select rt
     // JAL_Type -> 10 : select 5'd31
-    always @(OP) begin
+    always @(OP,Funct) begin
         case (OP)
             `OP_R_type   : begin
-                if (Funct == `FUNCT_JALR) ID_RwSel_r = 2'b10;
+                if (Funct == `FUNCT_JALR ) ID_RwSel_r = 2'b01;
                 else ID_RwSel_r = 2'b01;
             end 
             `OP_ORI_type  : ID_RwSel_r = 2'b00;
@@ -210,8 +222,9 @@ module CTRL (
         case (OP)
            `OP_R_type : begin
                case (Funct)
-                  `FUNCT_SLL : ID_AluSrcA_r = 1'b1;  // 还有2种情况未写上
-                  `FUNCT_JR  :  ID_AluSrcA_r = 1'bx;
+                  // // `FUNCT_SLL  : ID_AluSrcA_r = 1'b1;  // 还有2种情况未写上
+                  `FUNCT_JALR : ID_AluSrcA_r = 1'bx;
+                  `FUNCT_JR   : ID_AluSrcA_r = 1'bx;
                    default: ID_AluSrcA_r = 1'b0;
                endcase
            end 
@@ -224,7 +237,8 @@ module CTRL (
         case (OP)
            `OP_R_type : begin
                case (Funct)
-                  `FUNCT_JR  :  ID_AluSrcB_r = 1'bx;
+                  `FUNCT_JALR :  ID_AluSrcB_r = 1'bx;
+                  `FUNCT_JR   :  ID_AluSrcB_r = 1'bx;
                    default: ID_AluSrcB_r = 0;
                endcase
            end 
@@ -232,9 +246,21 @@ module CTRL (
             default: ID_AluSrcB_r = 1;
         endcase
     end
-
-    // MEM级会用到的信号
+    // ID_VariShiftSel
+    // 00 -> s (fixed shift)
+    // 01 -> variable shift 
+    // 11 -> 5'D16 
+    always @(OP,Funct) begin
+        if(OP == `OP_R_type )begin
+            if ( Funct == `FUNCT_SLLV || Funct == `FUNCT_SRAV || Funct == `FUNCT_SRLV) ID_VariShiftSel_r =2'b01;
+            else if ( Funct == `FUNCT_SLL || Funct == `FUNCT_SRA || Funct == `FUNCT_SRL) ID_VariShiftSel_r =2'b00;
+            else ID_VariShiftSel_r =1'bx;
+        end
+        else if (OP == `OP_LUI_type)ID_VariShiftSel_r =2'b11;
+    end
+// MEM级会用到的信号
     // ID_DmWr_r & ID_SaveType_r
+    // ID_DmWr_r 
     always @(OP) begin
         case (OP)
             `OP_SW_type :  ID_DmWr_r=1;
@@ -289,7 +315,7 @@ module CTRL (
            `OP_LBU_type : ID_LTypeExtOp_r = `EXT_8_ZERO;
            `OP_LH_type  : ID_LTypeExtOp_r = `EXT_16_SIGNED;
            `OP_LHU_type : ID_LTypeExtOp_r = `EXT_16_ZERO;
-           `OP_LUI_type : ID_LTypeExtOp_r = `EXT_HIGH_SET;
+           `OP_LUI_type : ID_LTypeExtOp_r = `EXT_32;
             default: ID_LTypeExtOp_r = `EXT_32;
         endcase
     end
@@ -317,7 +343,7 @@ assign ID_RfWr = ID_RfWr_r;
 assign ID_DmWr = ID_DmWr_r;
 assign ID_LTypeExtOp = ID_LTypeExtOp_r;
 assign ID_LTypeSel = ID_LTypeSel_r;
-
+assign ID_VariShiftSel=ID_VariShiftSel_r;
 assign ID_ReadMen = (OP == `OP_LW_type)?1:0;
 
 endmodule

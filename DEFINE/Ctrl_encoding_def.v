@@ -8,6 +8,8 @@
 `define ALUop_ORI     3'b011
 `define ALUop_NOR     3'b100
 `define ALUop_SLL     3'b101
+`define ALUop_SRL     3'b110
+`define ALUop_SRA     3'b111
 
 // NPCop_signal_encoding
 `define NPC_NORMAL    2'b00  // sequence
@@ -65,13 +67,22 @@
 //Funct
 `define FUNCT_ADD     6'b100000
 `define FUNCT_SUB     6'b100010
+`define FUNCT_SUBU    6'b100011
 `define FUNCT_ADDU    6'b100001
 `define FUNCT_AND     6'b100100
 `define FUNCT_OR      6'b100101
 `define FUNCT_NOR     6'b100111
+
+`define FUNCT_SLLV    6'b000100
 `define FUNCT_SLL     6'b000000
+`define FUNCT_SRA     6'b000011
+`define FUNCT_SRAV    6'b000111
+`define FUNCT_SRL     6'b000010
+`define FUNCT_SRLV    6'b000110
+
 `define FUNCT_JALR    6'b001001
 `define FUNCT_JR      6'b001000
+
 //B_type_opcode
 `define ACRON_BGEZ    5'b00001
 `define ACRON_BLTZ    5'b00000
