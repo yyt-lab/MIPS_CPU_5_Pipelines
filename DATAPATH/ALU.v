@@ -2,12 +2,13 @@
 
 module ALU(busA,busB,ALUop,s,ALUout);
 input [31:0] busA,busB;
-input [2:0] ALUop;
+input [3:0] ALUop;
 input [4:0] s;  // 移位字段
 output [31:0] ALUout;
  
 reg [31:0] ALUout_r;
-always @(busA,busB,ALUop) begin
+wire [31:0] ALUMinus;
+always @(busA,busB,ALUop,ALUMinus) begin
     // if (ALUop==ALUop_ADD)
     //     ALUout=busA+busB;
     // else if  (ALUop=ALUop_SUB)
@@ -24,10 +25,19 @@ always @(busA,busB,ALUop) begin
         `ALUop_SLL :  ALUout_r = busB << s;
         `ALUop_SRL :  ALUout_r = busB >> s;
         `ALUop_SRA :  ALUout_r = busB >>> s;
-
+        `ALUop_SLT :  begin
+            if (ALUMinus[31] == 1'b1 )  ALUout_r = 32'b1;
+            else  ALUout_r = 32'b0;
+        end
+        `ALUop_SLTU : begin
+            if ($unsigned(busA) < $unsigned(busB) ) ALUout_r = 32'b1;
+            else  ALUout_r = 32'b0;
+        end
+        `ALUop_XOR :  ALUout_r = busA ^ busB;
         default: ;
     endcase
     
 end 
 assign ALUout = ALUout_r;
+assign ALUMinus = busA - busB;
 endmodule

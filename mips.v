@@ -28,7 +28,7 @@ module mips (clk,rst);
 
    wire [2:0] ID_BTypeOp;  // B型指令 比较信号选择
    wire [2:0] ID_ExtOp;    // 符号扩展选择信号
-   wire [2:0] ID_AluOp;    // ALU操作码选择
+   wire [3:0] ID_AluOp;    // ALU操作码选择
    wire  ID_AluSrcA;
    wire  ID_AluSrcB;
    wire [1:0] ID_NpcOp;
@@ -50,7 +50,7 @@ module mips (clk,rst);
    wire [1:0] ID_VariShiftSel;
 
 // 第三级流水线
-   wire [2:0] EXE_AluOp;    // ALU操作码选择
+   wire [3:0] EXE_AluOp;    // ALU操作码选择
    wire [1:0] EXE_WbSel;    // 写回数据选择信号
    wire [1:0] EXE_RwSel;    // 写回地址选择信号
    wire EXE_RfWr;           // 寄存器堆写信号

@@ -12,7 +12,7 @@ module CTRL (
     output  ID_PcSel,    // PC寄存器输入选择信号
     output [2:0] ID_BTypeOp,  // B型指令 比较信号选择
     output [2:0] ID_ExtOp,    // 符号扩展选择信号
-    output [2:0] ID_AluOp,    // ALU操作码选择
+    output [3:0] ID_AluOp,    // ALU操作码选择
     output  ID_AluSrcA,
     output  ID_AluSrcB,
     output [1:0] ID_NpcOp,
@@ -29,7 +29,7 @@ module CTRL (
     reg  ID_PcSel_r;     // PC寄存器输入选择信号
     reg [2:0] ID_BTypeOp_r;   // B型指令 比较信号选择
     reg [2:0] ID_ExtOp_r;     // 符号扩展选择信号
-    reg [2:0] ID_AluOp_r;     // ALU操作码选择
+    reg [3:0] ID_AluOp_r;     // ALU操作码选择
     reg  ID_AluSrcA_r;        // ALU A 选择信号（0:rs 1:Sa移位）
     reg  ID_AluSrcB_r;        // ALU B 选择信号（0:rt 1:Imm立即数）
     reg [1:0] ID_NpcOp_r; 
@@ -89,9 +89,12 @@ module CTRL (
            `OP_SH_type    : ID_ExtOp_r = `EXT_IMME_SIGN;   // Sw    -> Signed16
            `OP_ADDI_type  : ID_ExtOp_r = `EXT_IMME_SIGN;   // ADDI  -> Signed16
            `OP_ADDIU_type : ID_ExtOp_r = `EXT_IMME_SIGN;   // ADDIU -> Signed16
-  
+           `OP_SLTI_type  : ID_ExtOp_r = `EXT_IMME_SIGN;   // ADDIU -> Signed16
+           `OP_SLTIU_type : ID_ExtOp_r = `EXT_IMME_SIGN;   // ADDIU -> Signed16
+
            `OP_ANDI_type  : ID_ExtOp_r = `EXT_IMME_ZERO;   // ANDI  -> Unsigned16
            `OP_ORI_type   : ID_ExtOp_r = `EXT_IMME_ZERO;   // ORI   -> Unsigned16
+           `OP_XORI_type  : ID_ExtOp_r = `EXT_IMME_ZERO;   // ORI   -> Unsigned16
   
            `OP_LUI_type   : ID_ExtOp_r = `EXT_IMME_ZERO;      //  Lui   -> Set high
             default: ID_ExtOp_r=3'bxx;
@@ -105,6 +108,7 @@ module CTRL (
             `OP_R_type    : ID_RfWr_r = 1'b1;
             `OP_ORI_type  : ID_RfWr_r = 1'b1;
             `OP_ANDI_type : ID_RfWr_r = 1'b1;
+            `OP_XORI_type : ID_RfWr_r = 1'b1;
             `OP_ADDI_type : ID_RfWr_r = 1'b1;
             `OP_ADDIU_type: ID_RfWr_r = 1'b1;
             /*********   IType  **********/
@@ -114,6 +118,8 @@ module CTRL (
             `OP_LH_type   : ID_RfWr_r = 1'b1;
             `OP_LHU_type  : ID_RfWr_r = 1'b1;
             `OP_LUI_type  : ID_RfWr_r = 1'b1;
+            `OP_SLTI_type : ID_RfWr_r = 1'b1;
+            `OP_SLTIU_type : ID_RfWr_r = 1'b1;
 
             `OP_JAL_type  : ID_RfWr_r = 1'b1;
             default : ID_RfWr_r = 1'b0;
@@ -148,12 +154,15 @@ module CTRL (
                 `FUNCT_SUB  : ID_AluOp_r = `ALUop_SUB;
                 `FUNCT_OR   : ID_AluOp_r = `ALUop_ORI;
                 `FUNCT_NOR  : ID_AluOp_r = `ALUop_NOR;
+                `FUNCT_XOR  : ID_AluOp_r = `ALUop_XOR;
                 `FUNCT_SLL  : ID_AluOp_r = `ALUop_SLL; 
                 `FUNCT_SLLV : ID_AluOp_r = `ALUop_SLL; 
                 `FUNCT_SRL  : ID_AluOp_r = `ALUop_SRL; 
                 `FUNCT_SRLV : ID_AluOp_r = `ALUop_SRL; 
                 `FUNCT_SRA  : ID_AluOp_r = `ALUop_SRA; 
                 `FUNCT_SRAV : ID_AluOp_r = `ALUop_SRA; 
+                `FUNCT_SLT  : ID_AluOp_r = `ALUop_SLT;
+                `FUNCT_SLTU : ID_AluOp_r = `ALUop_SLTU;
 
                 default: ;
                 endcase 
@@ -161,6 +170,7 @@ module CTRL (
 
                 /**********  I type **********/
             `OP_ORI_type   : ID_AluOp_r=`ALUop_ORI;
+            `OP_XORI_type  : ID_AluOp_r=`ALUop_XOR;
             `OP_ANDI_type  : ID_AluOp_r=`ALUop_AND;
 
             `OP_LW_type    : ID_AluOp_r=`ALUop_ADD;
@@ -177,6 +187,9 @@ module CTRL (
 
             `OP_ADDI_type  : ID_AluOp_r=`ALUop_ADD;
             `OP_ADDIU_type : ID_AluOp_r=`ALUop_ADD;
+            `OP_SLTI_type  : ID_AluOp_r = `ALUop_SLT;
+            `OP_SLTIU_type : ID_AluOp_r = `ALUop_SLTU;
+            
 
             //     /**********  B type **********/
             // `OP_BEQ_type : ID_AluOp_r=`ALUop_SUB;
@@ -200,6 +213,7 @@ module CTRL (
             end 
             `OP_ORI_type  : ID_RwSel_r = 2'b00;
             `OP_ANDI_type : ID_RwSel_r = 2'b00;
+            `OP_XORI_type : ID_RwSel_r = 2'b00;
             
             `OP_LW_type   : ID_RwSel_r = 2'b00;
             `OP_LB_type   : ID_RwSel_r = 2'b00;
@@ -211,6 +225,9 @@ module CTRL (
             `OP_ADDI_type : ID_RwSel_r = 2'b00;
             `OP_ADDIU_type: ID_RwSel_r = 2'b00;
             
+            `OP_SLTI_type : ID_RwSel_r = 2'b00;
+            `OP_SLTIU_type: ID_RwSel_r = 2'b00;
+
             `OP_JAL_type  : ID_RwSel_r = 2'b10;
             default: ID_RwSel_r = 2'bxx;
         endcase
@@ -242,7 +259,7 @@ module CTRL (
                    default: ID_AluSrcB_r = 0;
                endcase
            end 
-           `OP_LUI_type : ID_AluSrcB_r = 1'b1;
+           `OP_LUI_type  : ID_AluSrcB_r = 1'b1;
             default: ID_AluSrcB_r = 1;
         endcase
     end
@@ -292,6 +309,7 @@ module CTRL (
                 `OP_ADDI_type  : ID_WbSel_r=2'b01;
                 `OP_ADDIU_type : ID_WbSel_r=2'b01;
                 `OP_ANDI_type  : ID_WbSel_r=2'b01;
+                `OP_XORI_type  : ID_WbSel_r=2'b01;
                 `OP_ORI_type   : ID_WbSel_r=2'b01;
 
                 `OP_LW_type    : ID_WbSel_r=2'b00;
@@ -299,6 +317,8 @@ module CTRL (
                 `OP_LBU_type   : ID_WbSel_r=2'b00;
                 `OP_LHU_type   : ID_WbSel_r=2'b00;
                 `OP_LUI_type   : ID_WbSel_r=2'b00;
+                `OP_SLTI_type  : ID_WbSel_r=2'b01;
+                `OP_SLTIU_type : ID_WbSel_r=2'b01;
 
                 `OP_LH_type    : ID_WbSel_r=2'b00;
                 `OP_JAL_type   : ID_WbSel_r = 2'b10;

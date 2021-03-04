@@ -1,5 +1,5 @@
 module PIPE_2_ID_EX_REG (
-    input [2:0] ID_AluOp,    // ALU操作码选择
+    input [3:0] ID_AluOp,    // ALU操作码选择
     input [1:0] ID_WbSel,    // 写回数据选择信号
     input [1:0] ID_RwSel,    // 写回地址选择信号
     input ID_RfWr,           // 寄存器堆写信号
@@ -26,7 +26,7 @@ module PIPE_2_ID_EX_REG (
     input clk,
     // input ID_EX_REG_WR,
 
-    output [2:0] EXE_AluOp,    // ALU操作码选择
+    output [3:0] EXE_AluOp,    // ALU操作码选择
     output [1:0] EXE_WbSel,    // 写回数据选择信号
     output [1:0] EXE_RwSel,    // 写回地址选择信号
     output EXE_RfWr,           // 寄存器堆写信号
@@ -52,7 +52,7 @@ module PIPE_2_ID_EX_REG (
     output EXE_ReadMen            // LW信号
 );
 
-    reg [2:0] EXE_AluOp_r;    // ALU操作码选择
+    reg [3:0] EXE_AluOp_r;    // ALU操作码选择
     reg [1:0] EXE_WbSel_r;    // 写回数据选择信号
     reg [1:0] EXE_RwSel_r;    // 写回地址选择信号
     reg EXE_RfWr_r;           // 寄存器堆写信号
