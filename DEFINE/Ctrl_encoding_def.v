@@ -13,7 +13,7 @@
 `define ALUop_SLT     4'b1000
 `define ALUop_SLTU    4'b1010
 `define ALUop_XOR     4'b1001
-
+ 
 // NPCop_signal_encoding
 `define NPC_NORMAL    2'b00  // sequence
 `define NPC_BRANCH    2'b01  // branch
