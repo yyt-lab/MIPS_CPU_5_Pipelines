@@ -13,12 +13,12 @@ module NPC (
     output  [31:2] NPC;
 
     reg [31:2] NPC_r;
-    always @(PC,Imm,NPCop) begin
+    always @(PC,Imm,NPCop,RFIn) begin
         case (NPCop)
         `NPC_NORMAL : NPC_r=PC ;
         `NPC_BRANCH : NPC_r=PC+{{14{Imm[15]}},Imm[15:0]};
         `NPC_JUMP   : NPC_r={PC[31:28],Imm[25:0]};
-        `NPC_RF     : NPC_r=RFIn[29:0];   // 实际低30位保存的是地址
+        `NPC_RF     : NPC_r=RFIn[31:2];   // 实际低30位保存的是地址
         default : ;
 
         endcase

@@ -95,6 +95,7 @@ module mips (clk,rst);
 // 第五级流水线
    wire [31:0] WB_DmOut;
    wire [31:0] WB_AluOut;
+   wire [31:0] MEM_LTypeDmOut;
    wire [31:2] WB_PcAddOne;
    wire [1:0]  WB_WbSel;
    wire [4:0]  WB_Rw;
@@ -104,7 +105,7 @@ module mips (clk,rst);
    wire [31:0] WB_Wd;
    wire [31:0] WB_LTypeDmOut;
    wire [2:0]  WB_LTypeExtOp;
-   wire [31:0] WB_LTypeResult;
+   wire [31:0] MEM_LTypeResult;
 
    // 指令hex码
    wire [31:0] ID_Instr;
@@ -162,13 +163,13 @@ PIPE_1_IF_ID_REG U_PIPE_1_IF_ID_REG(
    // 2'b10 -> 选择dm结果
    // 2'b11 -> 选择WB结果
    MUX4 #(32) BusA_Sel(
-      .d0(ID_RfOutA),.d1(EXE_AluOut),.d2(MEM_DmOut),.d3(WB_Wd),
+      .d0(ID_RfOutA),.d1(EXE_AluOut),.d2(WB_LTypeDmOut),.d3(WB_Wd),
       .sel4_to_1(ID_RfForwardA),
       .y(ID_BTypeOpInA)
    );
    // 分支指令单元 旁路操作输入B
    MUX4 #(32) BusB_Sel(
-      .d0(ID_RfOutB),.d1(EXE_AluOut),.d2(MEM_DmOut),.d3(WB_Wd),
+      .d0(ID_RfOutB),.d1(EXE_AluOut),.d2(WB_LTypeDmOut),.d3(WB_Wd),
       .sel4_to_1(ID_RfForwardB),
       .y(ID_BTypeOpInB)
    );
@@ -222,7 +223,7 @@ PIPE_1_IF_ID_REG U_PIPE_1_IF_ID_REG(
    // B_Hazard
    // ID_IFFlush : 0 -> 清空IF寄存器
    BType_Hazard U_BType_Hazard(
-      .OP(ID_OP),.Funct(ID_Bopcode),.BResult(ID_BResult),
+      .OP(ID_OP),.BOpecode(ID_Bopcode),.Funct(ID_Funct),.BResult(ID_BResult),
       .ID_IFFlush(ID_IFFlush)
    );
    // LW_Hazard
@@ -382,42 +383,46 @@ PIPE_3_EXE_MEM_REG U_PIPE_3_EXE_MEM_REG(
       .addr(MEM_AluOut[11:0]), .din(MEM_OutB), .DMWr(MEM_DmWr), .clk(clk), .dout(MEM_DmOut),.SaveType(MEM_SaveType)
    );
 
-// 第四级流水线
-PIPE_4_MEM_WB_REG U_PIPE_4_MEM_WB_REG(
-      .MEM_DmResult(MEM_DmOut),
-      .MEM_AluOut(MEM_AluOut),
-      .MEM_PcAddOne(MEM_PcAddOne),
-      .MEM_WbSel(MEM_WbSel),
-      .MEM_Rw(MEM_Rw),
-      .MEM_Instr(MEM_Instr),
-      .MEM_LTypeExtOp(MEM_LTypeExtOp),
-      .MEM_RfWr(MEM_RfWr),
-      .MEM_LTypeSel(MEM_LTypeSel),
-      .clk(clk),
 
-      .WB_DmResult(WB_DmOut),
-      .WB_AluOut(WB_AluOut),
-      .WB_PcAddOne(WB_PcAddOne),
-      .WB_WbSel(WB_WbSel),
-      .WB_Rw(WB_Rw),
-      .WB_Instr(WB_Instr),
-      .WB_LTypeExtOp(WB_LTypeExtOp),
-      .WB_LTypeSel(WB_LTypeSel),
-      .WB_RfWr(WB_RfWr)
-);
    // ID_LTypeSel_r
    // 0-> Lui type
    // 1-> Dmresult
    MUX2 #(32) U_LType_EXT_IN(
-      .d0(WB_AluOut),.d1(WB_DmOut),.sel2_to_1(WB_LTypeSel),
-      .y(WB_LTypeResult)
+      .d0(MEM_AluOut),.d1(MEM_DmOut),.sel2_to_1(MEM_LTypeSel),
+      .y(MEM_LTypeResult)
    );
    EXT U_LWEXT(
-      .Imm16(WB_LTypeResult),
-      .EXTop(WB_LTypeExtOp),
-      .LType(WB_AluOut[1:0]),
-      .Imm32(WB_LTypeDmOut)  // 输出
+      .Imm16(MEM_LTypeResult),
+      .EXTop(MEM_LTypeExtOp),
+      .LType(MEM_AluOut[1:0]),
+      .Imm32(MEM_LTypeDmOut)  // 输出
    );
+// 第四级流水线
+PIPE_4_MEM_WB_REG U_PIPE_4_MEM_WB_REG(
+      // .MEM_DmResult(MEM_DmOut),
+      .MEM_AluOut(MEM_AluOut),
+      .MEM_LTypeDmOut(MEM_LTypeDmOut),
+      .MEM_PcAddOne(MEM_PcAddOne),
+      .MEM_WbSel(MEM_WbSel),
+      .MEM_Rw(MEM_Rw),
+      .MEM_Instr(MEM_Instr),
+      // .MEM_LTypeExtOp(MEM_LTypeExtOp),
+      // .MEM_LTypeSel(MEM_LTypeSel),
+      .MEM_RfWr(MEM_RfWr),
+      .clk(clk),
+
+      // .WB_DmResult(WB_DmOut),
+      .WB_AluOut(WB_AluOut),
+      .WB_LTypeDmOut(WB_LTypeDmOut),
+      .WB_PcAddOne(WB_PcAddOne),
+      .WB_WbSel(WB_WbSel),
+      .WB_Rw(WB_Rw),
+      .WB_Instr(WB_Instr),
+      // .WB_LTypeExtOp(WB_LTypeExtOp),
+      // .WB_LTypeSel(WB_LTypeSel),
+      .WB_RfWr(WB_RfWr)
+);
+
    MUX4 #(32) WdSel(
       .d0(WB_LTypeDmOut),.d1(WB_AluOut),.d2(WB_PcAddOne),.sel4_to_1(WB_WbSel),
       .y(WB_Wd)

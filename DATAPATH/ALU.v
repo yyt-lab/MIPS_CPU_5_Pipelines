@@ -24,9 +24,9 @@ always @(busA,busB,ALUop,ALUMinus) begin
         `ALUop_NOR :  ALUout_r = ~(busA | busB);
         `ALUop_SLL :  ALUout_r = busB << s;
         `ALUop_SRL :  ALUout_r = busB >> s;
-        `ALUop_SRA :  ALUout_r = busB >>> s;
+        `ALUop_SRA :  ALUout_r = ($signed(busB)) >>> s;
         `ALUop_SLT :  begin
-            if (ALUMinus[31] == 1'b1 )  ALUout_r = 32'b1;
+            if ($signed(busA) < $signed(busB) )  ALUout_r = 32'b1;
             else  ALUout_r = 32'b0;
         end
         `ALUop_SLTU : begin

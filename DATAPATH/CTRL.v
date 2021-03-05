@@ -38,6 +38,7 @@ module CTRL (
     reg [1:0] ID_RwSel_r;     // 写回地址选择信号
     reg ID_RfWr_r;            // 寄存器堆写信号
     reg ID_DmWr_r;            // 数据存储器写信号
+    reg ID_ReadMen_r;         // LW信号
     reg [2:0] ID_LTypeExtOp_r;
     reg ID_LTypeSel_r;
     reg [1:0] ID_VariShiftSel_r;
@@ -103,9 +104,12 @@ module CTRL (
 
     // ID_RfWr_r
     // 1 有效 
-    always @(OP) begin
+    always @(OP,Funct) begin
         case (OP)
-            `OP_R_type    : ID_RfWr_r = 1'b1;
+            `OP_R_type    : begin
+                if (Funct == `FUNCT_JR) ID_RfWr_r = 1'b0;
+                else  ID_RfWr_r = 1'b1;
+            end 
             `OP_ORI_type  : ID_RfWr_r = 1'b1;
             `OP_ANDI_type : ID_RfWr_r = 1'b1;
             `OP_XORI_type : ID_RfWr_r = 1'b1;
@@ -149,7 +153,7 @@ module CTRL (
                case (Funct)
                 `FUNCT_ADD  : ID_AluOp_r = `ALUop_ADD;
                 `FUNCT_ADDU : ID_AluOp_r = `ALUop_ADD;
-                `FUNCT_SUBU : ID_AluOp_r = `ALUop_ADD;
+                `FUNCT_SUBU : ID_AluOp_r = `ALUop_SUB;
                 `FUNCT_AND  : ID_AluOp_r = `ALUop_AND;
                 `FUNCT_SUB  : ID_AluOp_r = `ALUop_SUB;
                 `FUNCT_OR   : ID_AluOp_r = `ALUop_ORI;
@@ -275,6 +279,18 @@ module CTRL (
         end
         else if (OP == `OP_LUI_type)ID_VariShiftSel_r =2'b11;
     end
+    // ID_ReadMen_r,        // LW信号
+    always @(OP) begin
+        case (OP)
+            `OP_LW_type  : ID_ReadMen_r = 1'b1;
+            `OP_LB_type  : ID_ReadMen_r = 1'b1;
+            `OP_LBU_type : ID_ReadMen_r = 1'b1;
+            `OP_LH_type  : ID_ReadMen_r = 1'b1;
+            `OP_LHU_type : ID_ReadMen_r = 1'b1;
+            default: ID_ReadMen_r = 1'b0;
+        endcase
+    end 
+
 // MEM级会用到的信号
     // ID_DmWr_r & ID_SaveType_r
     // ID_DmWr_r 
@@ -364,7 +380,7 @@ assign ID_DmWr = ID_DmWr_r;
 assign ID_LTypeExtOp = ID_LTypeExtOp_r;
 assign ID_LTypeSel = ID_LTypeSel_r;
 assign ID_VariShiftSel=ID_VariShiftSel_r;
-assign ID_ReadMen = (OP == `OP_LW_type)?1:0;
+assign ID_ReadMen = ID_ReadMen_r;
 
 endmodule
 
